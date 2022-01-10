@@ -1,0 +1,10 @@
+---
+title: "Coding"
+author: "MIN"
+date: '2022 1 10 '
+output: rmdformats::readthedown
+---
+
+# R
+
+
