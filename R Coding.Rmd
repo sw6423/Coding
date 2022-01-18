@@ -7,4 +7,117 @@ output: rmdformats::readthedown
 
 # R
 
+## Data (신한카드 코로나19 카드이용건수)
+  
+```{r}
+# 사용된 패키지
+library(plyr)
+library(dplyr)
+library(readxl)
+library(stringr)
+library(data.table)
+library(ggplot2)
 
+filelist <- list.files("C:/Users/ysm64/Desktop/Coding/DB/card db", full.names = T)
+
+db <- NULL
+
+for (i in filelist) {
+  x <- read_xlsx(i, col_names = T)
+  db <- rbind.fill(db, x)
+}
+
+db
+#카드결제건수(천건)
+
+data1 <- db %>% data.table()
+
+head(data1)
+tail(data1)
+str(data1)
+
+colnames(data1) <- c("Days", "Category", "Payment")
+summary(data1)
+head(data1)
+```
+
+## Date
+
+```{r}
+library(lubridate)
+
+data1$Date <- data1$Days
+data1$Date <- ymd(data1$Date) 
+
+head(data1)
+str(data1)
+
+data1$Day1 <- wday(data1$Date, label = T) #요일을 텍스트로 확인하기 위해 label = T 넣음.
+data1$Day2 <- wday(data1$Date, label = F) #요일을 텍스트로 확인하기 위해 label = T 넣음.
+data1$Week <- week(data1$Date)
+data1$Month <- month(data1$Date)
+data1$Q <- semester(data1$Date) #상하반기 구분 함수
+data1$Q4 <- quarter(data1$Date) #4분기 구분 함수
+data1$Year <- year(data1$Date) 
+
+data1 <- data1 %>% mutate(날짜 = make_datetime(Year, Month, Day2)) #make_datetime : 년, 월, 일, 분, 초 순서임.
+data1$DATE_V <- make_datetime(data1$Year, data1$Month, data1$Day2)
+
+head(data1)
+str(data1)
+```
+
+## Plot_1 
+
+```{r}
+library(ggplot2)
+
+data2 <- data1
+data2$Year <- as.character(data2$Year) 
+data2$Month <- as.character(data2$Month)
+data2$Day2 <- as.character(data2$Day2)
+
+data3 <- data1 %>% select(Year, Month, Day2) %>% mutate_all("as.character")
+
+ggplot(data2, aes(x = Month, y = Payment, group = Year, colour = Year)) + geom_point() + facet_wrap(~ Year) 
+```
+
+## Plot_2
+
+```{r}
+options(scipen = 100) #자연상수 e 없애는 함수. 
+
+DB <- data1 %>% data.table()
+C_DB <- DB[ , sum(Payment), by = c("Year", "Month", "Category")]
+colnames(C_DB) <- c("Year", "Month", "Category", "Payment")
+C_DB
+str(C_DB)
+C_DB$Year <- as.character(C_DB$Year)
+C_DB$Month <- as.character(C_DB$Month)
+
+ggplot(C_DB, aes(x = Month, y = Payment, group = Year, colour = Year)) + 
+  geom_point() + 
+  facet_wrap(~ Category, scales="free") + 
+  coord_cartesian(ylim = c(200, 460000)) +
+  labs(title = "신한카드 코로나19 카드이용건수",
+       x = "카드 이용 영역", 
+       y = "카드 이용 건수(천건)")
+```
+
+## Plot_3
+
+```{r}
+options(scipen = 100)
+
+C_DB_V <- C_DB %>% filter(Category == c("요식/유흥", "유통"))
+summary(C_DB_V$Payment)
+
+ggplot(C_DB_V, aes(x = Month, y = Payment, group = Year, colour = Year)) + 
+  geom_point() + 
+  facet_wrap(~ Category) + 
+  coord_cartesian(ylim = c(10000, 460000)) +
+  labs(title = "신한카드 카드이용건수 TOP 2 영역",
+       x = "카드 이용 영역", 
+       y = "카드 이용 건수(천건)") + 
+  geom_text(aes(label = Payment), vjust = -0.5)
+```
